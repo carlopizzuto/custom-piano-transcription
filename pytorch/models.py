@@ -11,6 +11,7 @@ import torch.nn.functional as F
 
 from torchlibrosa.stft import Spectrogram, LogmelFilterBank
 from pytorch_utils import move_data_to_device
+from models_utils import safe_relu, SafeReLU, safe_transpose
 
 
 def init_layer(layer):
@@ -92,8 +93,8 @@ class ConvBlock(nn.Module):
           output: (batch_size, out_channels, classes_num)
         """
 
-        x = F.relu_(self.bn1(self.conv1(input)))
-        x = F.relu_(self.bn2(self.conv2(x)))
+        x = safe_relu(self.bn1(self.conv1(input)))
+        x = safe_relu(self.bn2(self.conv2(x)))
         
         if pool_type == 'avg':
             x = F.avg_pool2d(x, kernel_size=pool_size)
@@ -145,7 +146,7 @@ class AcousticModelCRnn8Dropout(nn.Module):
         x = F.dropout(x, p=0.2, training=self.training)
 
         x = x.transpose(1, 2).flatten(2)
-        x = F.relu(self.bn5(self.fc5(x).transpose(1, 2)).transpose(1, 2))
+        x = safe_relu(self.bn5(self.fc5(x).transpose(1, 2)).transpose(1, 2))
         x = F.dropout(x, p=0.5, training=self.training, inplace=True)
         
         (x, _) = self.gru(x)
@@ -355,3 +356,21 @@ class Note_pedal(nn.Module):
         full_output_dict.update(note_output_dict)
         full_output_dict.update(pedal_output_dict)
         return full_output_dict
+
+
+class RegNet(nn.Module):
+    def __init__(self, classes_num):
+        super(RegNet, self).__init__()
+        
+        self.fc5 = nn.Linear(512, 768, bias=False)
+        self.bn5 = nn.BatchNorm1d(768)
+        self.safe_relu = SafeReLU()
+        
+    def forward(self, x):
+        # Use safe operations
+        x1 = self.fc5(x)
+        x2 = safe_transpose(x1, 1, 2)
+        x3 = self.bn5(x2)
+        x4 = safe_transpose(x3, 1, 2)
+        x5 = self.safe_relu(x4)
+        return x5

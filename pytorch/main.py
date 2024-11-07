@@ -16,6 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
+import torch.autograd
 
 from utils.utilities import (create_folder, get_filename, create_logging, 
     StatisticsContainer, RegressionPostProcessor) 
@@ -25,6 +26,7 @@ from pytorch_utils import move_data_to_device
 from losses import get_loss_func
 from evaluate import SegmentEvaluator
 import config
+from model_utils import prepare_model_for_training
 
 
 def train(args):
@@ -56,7 +58,16 @@ def train(args):
     reduce_iteration = args.reduce_iteration
     resume_iteration = args.resume_iteration
     early_stop = args.early_stop
-    device = torch.device('cuda') if args.cuda and torch.cuda.is_available() else torch.device('cpu')
+    if args.cuda:
+        if torch.cuda.is_available():
+            device = torch.device('cuda')
+        elif torch.backends.mps.is_available():
+            device = torch.device('mps')  # Use Metal for M-series chips
+        else:
+            device = torch.device('cpu')
+            print('Warning: CUDA/MPS not available, using CPU instead')
+    else:
+        device = torch.device('cpu')
     mini_data = args.mini_data
     filename = args.filename
     checkpoint_path = args.checkpoint_path
@@ -110,13 +121,23 @@ def train(args):
     Model = eval(model_type)
     model = Model(frames_per_second=frames_per_second, classes_num=classes_num)
     
+    if args.detect_anomaly:
+        torch.autograd.set_detect_anomaly(True)
+        print("Anomaly detection enabled")
+        print(f"Initial model device: {next(model.parameters()).device}")
+    
+    model = prepare_model_for_training(model)
+    
     if checkpoint_path:
-        if os.path.isfile(checkpoint_path):
-            logging.info(f"Loading pretrained model from {checkpoint_path}")
-            checkpoint = torch.load(checkpoint_path)
+        print('Loading pretrained model from', checkpoint_path)
+        checkpoint = torch.load(checkpoint_path)
+        if 'model' in checkpoint:  # Handle wrapped state dict
+            checkpoint = checkpoint['model']
+        try:
             model.load_state_dict(checkpoint)
-        else:
-            raise FileNotFoundError(f"Checkpoint path {checkpoint_path} does not exist.")
+        except RuntimeError as e:
+            print('Warning: Strict loading failed, trying non-strict loading')
+            model.load_state_dict(checkpoint, strict=False)
     else:
         logging.info("Training from scratch.")
 
@@ -207,77 +228,73 @@ def train(args):
 
     train_bgn_time = time.time()
 
-    for batch_data_dict in train_loader:
-        
-        # Evaluation 
-        if iteration % 5000 == 0:# and iteration > 0:
-            logging.info('------------------------------------')
-            logging.info('Iteration: {}'.format(iteration))
+    try:
+        for batch_data_dict in train_loader:
+            # Evaluation 
+            if iteration % 5000 == 0:
+                logging.info('------------------------------------')
+                logging.info('Iteration: {}'.format(iteration))
 
-            train_fin_time = time.time()
-
-            evaluate_train_statistics = evaluator.evaluate(evaluate_train_loader)
-            validate_statistics = evaluator.evaluate(validate_loader)
-            test_statistics = evaluator.evaluate(test_loader)
-
-            logging.info('    Train statistics: {}'.format(evaluate_train_statistics))
-            logging.info('    Validation statistics: {}'.format(validate_statistics))
-            logging.info('    Test statistics: {}'.format(test_statistics))
-
-            statistics_container.append(iteration, evaluate_train_statistics, data_type='train')
-            statistics_container.append(iteration, validate_statistics, data_type='validation')
-            statistics_container.append(iteration, test_statistics, data_type='test')
-            statistics_container.dump()
-
-            train_time = train_fin_time - train_bgn_time
-            validate_time = time.time() - train_fin_time
-
-            logging.info(
-                'Train time: {:.3f} s, validate time: {:.3f} s'
-                ''.format(train_time, validate_time))
-
-            train_bgn_time = time.time()
-        
-        # Save model
-        if iteration % 20000 == 0:
-            checkpoint = {
-                'iteration': iteration, 
-                'model': model.module.state_dict(), 
-                'sampler': train_sampler.state_dict()}
-
-            checkpoint_path = os.path.join(
-                checkpoints_dir, '{}_iterations.pth'.format(iteration))
+            # Move data to device
+            batch_data_dict = {
+                key: move_data_to_device(value, device)
+                for key, value in batch_data_dict.items()
+            }
+            
+            # Training step
+            model.train()
+            optimizer.zero_grad()  # Zero gradients before forward pass
+            
+            with torch.autograd.detect_anomaly():
+                # Forward pass
+                batch_output_dict = model(batch_data_dict['waveform'])
+                loss = loss_func(model, batch_output_dict, batch_data_dict)
                 
-            torch.save(checkpoint, checkpoint_path)
-            logging.info('Model saved to {}'.format(checkpoint_path))
-        
-        # Reduce learning rate
-        if iteration % reduce_iteration == 0 and iteration > 0:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.9
-        
-        # Move data to device
-        for key in batch_data_dict.keys():
-            batch_data_dict[key] = move_data_to_device(batch_data_dict[key], device)
-         
-        model.train()
-        batch_output_dict = model(batch_data_dict['waveform'])
+                # Backward pass
+                loss.backward()
+                
+                # Optimizer step
+                optimizer.step()
+            
+            print(f"Iteration {iteration}, Loss: {loss.item()}")
+            print(f"Device: {device}, Model device: {next(model.parameters()).device}")
+            
+            # Save model
+            if iteration % 20000 == 0:
+                checkpoint = {
+                    'iteration': iteration, 
+                    'model': model.module.state_dict(), 
+                    'sampler': train_sampler.state_dict()}
 
-        loss = loss_func(model, batch_output_dict, batch_data_dict)
+                checkpoint_path = os.path.join(
+                    checkpoints_dir, '{}_iterations.pth'.format(iteration))
+                    
+                torch.save(checkpoint, checkpoint_path)
+                logging.info('Model saved to {}'.format(checkpoint_path))
+            
+            # Reduce learning rate
+            if iteration % reduce_iteration == 0 and iteration > 0:
+                for param_group in optimizer.param_groups:
+                    param_group['lr'] *= 0.9
+            
+            iteration += 1
+            
+            # Stop learning
+            if iteration == early_stop:
+                break
+                
+    except RuntimeError as e:
+        print(f"Error during training: {str(e)}")
+        print(f"Current device: {device}")
+        print(f"Model device: {next(model.parameters()).device}")
+        print(f"Input shape: {batch_data_dict['waveform'].shape}")
+        raise
 
-        print(iteration, loss)
-
-        # Backward
-        loss.backward()
-        
-        optimizer.step()
-        optimizer.zero_grad()
-        
-        # Stop learning
-        if iteration == early_stop:
-            break
-
-        iteration += 1
+    # Ensure model is in training mode
+    print(f"Model parameters device check:")
+    for name, param in model.named_parameters():
+        if param.device != torch.device(device):
+            print(f"Warning: {name} is on {param.device}, expected {device}")
 
 
 if __name__ == '__main__':
@@ -299,6 +316,8 @@ if __name__ == '__main__':
     parser_train.add_argument('--mini_data', action='store_true', default=False)
     parser_train.add_argument('--cuda', action='store_true', default=False)
     parser_train.add_argument('--checkpoint_path', type=str, required=False, help="Path to pretrained model checkpoint for fine-tuning.")
+    parser_train.add_argument('--num_workers', type=int, default=8, help='Number of data loading workers')
+    parser_train.add_argument('--detect_anomaly', action='store_true', default=False)
 
     args = parser.parse_args()
     args.filename = get_filename(__file__)

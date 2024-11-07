@@ -237,8 +237,7 @@ class Sampler(object):
         self.pointer = state['pointer']
         self.segment_indexes = state['segment_indexes']
 
-
-class TestSampler(object):
+class TestSampler2(object):
     def __init__(self, hdf5s_dir, split, segment_seconds, hop_seconds, 
             batch_size, mini_data, random_seed=1234):
         """Sampler for testing.
@@ -251,32 +250,47 @@ class TestSampler(object):
           batch_size: int
           mini_data: bool, sample from a small amount of data for debugging
         """
-        assert split in ['train', 'validation', 'test']
+        print(f"Initializing TestSampler with: hdf5s_dir={hdf5s_dir}, split={split}")
+        
         self.hdf5s_dir = hdf5s_dir
         self.segment_seconds = segment_seconds
         self.hop_seconds = hop_seconds
-        self.sample_rate = config.sample_rate
         self.batch_size = batch_size
+        self.sample_rate = config.sample_rate
         self.random_state = np.random.RandomState(random_seed)
         self.max_evaluate_iteration = 20    # Number of mini-batches to validate
-
-        (hdf5_names, hdf5_paths) = traverse_folder(hdf5s_dir)
+        
+        # Initialize empty segment list before using it
         self.segment_list = []
-
+        
+        # Get names of hdf5 files
+        hdf5_paths = sorted([os.path.join(hdf5s_dir, name) for name in os.listdir(hdf5s_dir) 
+            if name.endswith('.h5')])
+            
+        print(f"Found {len(hdf5_paths)} HDF5 files")
+        
         n = 0
+        # Build segment list
         for hdf5_path in hdf5_paths:
-            with h5py.File(hdf5_path, 'r') as hf:
-                if hf.attrs['split'].decode() == split:
-                    audio_name = hdf5_path.split('/')[-1]
-                    year = hf.attrs['year'].decode()
-                    start_time = 0
-                    while (start_time + self.segment_seconds < hf.attrs['duration']):
-                        self.segment_list.append([year, audio_name, start_time])
-                        start_time += self.hop_seconds
-                    
-                    n += 1
-                    if mini_data and n == 10:
-                        break
+            try:
+                with h5py.File(hdf5_path, 'r') as hf:
+                    if hf.attrs['split'].decode() == split:
+                        audio_name = hdf5_path.split('/')[-1]
+                        year = hf.attrs['year'].decode()
+                        start_time = 0
+                        while (start_time + self.segment_seconds < hf.attrs['duration']):
+                            self.segment_list.append([year, audio_name, start_time])
+                            start_time += self.hop_seconds
+                        
+                        n += 1
+                        if mini_data and n == 10:
+                            break
+                        
+            except Exception as e:
+                print(f"Error processing {hdf5_path}: {str(e)}")
+                
+        print(f"Built segment_list with {len(self.segment_list)} segments")
+
         """self.segment_list looks like:
         [['2004', 'MIDI-Unprocessed_SMF_22_R1_2004_01-04_ORIG_MID--AUDIO_22_R1_2004_17_Track17_wav.h5', 0], 
          ['2004', 'MIDI-Unprocessed_SMF_22_R1_2004_01-04_ORIG_MID--AUDIO_22_R1_2004_17_Track17_wav.h5', 1.0], 
@@ -312,6 +326,96 @@ class TestSampler(object):
     def __len__(self):
         return -1
 
+class TestSampler(object):
+    def __init__(self, hdf5s_dir, split, segment_seconds, hop_seconds, 
+            batch_size, mini_data, random_seed=1234):
+        """Sampler for testing.
+
+        Args:
+          hdf5s_dir: str
+          split: 'train' | 'validation' | 'test'
+          segment_seconds: float
+          hop_seconds: float
+          batch_size: int
+          mini_data: bool, sample from a small amount of data for debugging
+        """
+        print(f"Initializing TestSampler with: hdf5s_dir={hdf5s_dir}, split={split}")
+        
+        self.hdf5s_dir = hdf5s_dir
+        self.segment_seconds = segment_seconds
+        self.hop_seconds = hop_seconds
+        self.batch_size = batch_size
+        self.sample_rate = config.sample_rate
+        self.random_state = np.random.RandomState(random_seed)
+        self.max_evaluate_iteration = 20    # Number of mini-batches to validate
+        
+        # Initialize empty segment list before using it
+        self.segment_list = []
+        
+        # Get names of hdf5 files recursively
+        hdf5_paths = []
+        for root, _, files in os.walk(hdf5s_dir):
+            for file in files:
+                if file.endswith('.h5'):
+                    hdf5_paths.append(os.path.join(root, file))
+        hdf5_paths = sorted(hdf5_paths)
+            
+        print(f"Found {len(hdf5_paths)} HDF5 files")
+        
+        n = 0
+        # Build segment list
+        for hdf5_path in hdf5_paths:
+            try:
+                with h5py.File(hdf5_path, 'r') as hf:
+                    if hf.attrs['split'].decode() == split:
+                        print(f"Processing {hdf5_path} for split {split}")
+                        audio_name = hdf5_path.split('/')[-1]
+                        year = hf.attrs['year'].decode()
+                        start_time = 0
+                        while (start_time + self.segment_seconds < hf.attrs['duration']):
+                            self.segment_list.append([year, audio_name, start_time])
+                            start_time += self.hop_seconds
+                        
+                        n += 1
+                        if mini_data and n == 10:
+                            break
+                        
+            except Exception as e:
+                print(f"Error processing {hdf5_path}: {str(e)}")
+                
+        print(f"Built segment_list with {len(self.segment_list)} segments")
+
+        """self.segment_list looks like:
+        [['2004', 'MIDI-Unprocessed_SMF_22_R1_2004_01-04_ORIG_MID--AUDIO_22_R1_2004_17_Track17_wav.h5', 0], 
+         ['2004', 'MIDI-Unprocessed_SMF_22_R1_2004_01-04_ORIG_MID--AUDIO_22_R1_2004_17_Track17_wav.h5', 1.0], 
+         ['2004', 'MIDI-Unprocessed_SMF_22_R1_2004_01-04_ORIG_MID--AUDIO_22_R1_2004_17_Track17_wav.h5', 2.0]
+         ...]"""
+
+        logging.info('Evaluate {} segments: {}'.format(split, len(self.segment_list)))
+
+        self.segment_indexes = np.arange(len(self.segment_list))
+        self.random_state.shuffle(self.segment_indexes)
+
+    def __iter__(self):
+        total_segments = len(self.segment_list)
+        pointer = 0
+        iteration = 0
+        
+        while iteration < self.max_evaluate_iteration and pointer < total_segments:
+            batch_segment_list = []
+            for _ in range(min(self.batch_size, total_segments - pointer)):
+                batch_segment_list.append(self.segment_list[pointer])
+                pointer += 1
+                
+            if batch_segment_list:
+                iteration += 1
+                yield batch_segment_list
+            else:
+                break
+
+    def __len__(self):
+        return -1
+
 
 def collate_fn(list_data_dict):
     """Collate input and target of segments to a mini-batch.
@@ -333,3 +437,19 @@ def collate_fn(list_data_dict):
         np_data_dict[key] = np.array([data_dict[key] for data_dict in list_data_dict])
     
     return np_data_dict
+
+class DataGenerator:
+    def __iter__(self):
+        pointer = 0
+        total_segments = len(self.segment_indexes)
+        
+        while pointer < total_segments:
+            batch_index = []
+            for _ in range(self.batch_size):
+                if pointer >= total_segments:
+                    break
+                batch_index.append(self.segment_indexes[pointer])
+                pointer += 1
+                
+            if batch_index:  # Only yield if we have items
+                yield batch_index

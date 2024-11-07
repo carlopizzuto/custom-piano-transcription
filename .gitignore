@@ -4,4 +4,8 @@
 *.hdf5
 *.pyc
 __pycache__
-
+*.pth
+*.mp3
+*.mid
+/datasets
+/workspaces
