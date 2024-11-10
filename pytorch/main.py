@@ -283,6 +283,18 @@ def train(args):
             break
 
         iteration += 1
+    
+    checkpoint = {
+        'iteration': iteration, 
+        'model': model.module.state_dict(), 
+        'sampler': train_sampler.state_dict()
+    }
+    checkpoint_path = os.path.join(
+        workspace, f'final_{model_type}_{iteration}_iters.pth'
+    )
+
+    torch.save(checkpoint, checkpoint_path)
+    logging.info(f'Final model saved to {checkpoint_path}')
 
 
 if __name__ == '__main__':
