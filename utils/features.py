@@ -12,6 +12,76 @@ from utilities import (create_folder, float32_to_int16, create_logging,
     get_filename, read_metadata, read_midi, read_maps_midi)
 import config
 
+def pack_other_dataset_to_hdf5(args):
+    """Load & resample other audio files, then write to HDF5 files.
+
+    Args:
+      dataset_dir: str, directory of dataset
+      workspace: str, directory of your workspace
+    """
+
+    # Arguments & parameters
+    dataset_dir = args.dataset_dir
+    workspace = args.workspace
+
+    sample_rate = config.sample_rate
+
+    # Paths
+    csv_path = os.path.join(dataset_dir, 'maestro-v2.0.0.csv')
+    waveform_hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maestro')
+
+    logs_dir = os.path.join(workspace, 'logs', get_filename(__file__))
+    create_logging(logs_dir, filemode='w')
+    logging.info(args)
+
+    # Read metadata
+    meta_dict = read_metadata(csv_path)
+
+    audios_num = len(meta_dict['canonical_composer'])
+    logging.info('Total audios number: {}'.format(audios_num))
+
+    feature_time = time.time()
+
+    # Load & resample each audio file to an HDF5 file
+    for n in range(audios_num):
+        logging.info('{} {}'.format(n, meta_dict['midi_filename'][n]))
+
+        # Read MIDI
+        midi_path = os.path.join(dataset_dir, meta_dict['midi_filename'][n])
+        midi_dict = read_midi(midi_path)
+
+        # Load audio
+        audio_path = os.path.join(dataset_dir, meta_dict['audio_filename'][n])
+        (audio, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
+
+        # **Normalize audio to [-1.0, 1.0]**
+        max_val = np.max(np.abs(audio))
+        if max_val > 0:
+            audio = audio / max_val
+
+        packed_hdf5_path = os.path.join(
+            waveform_hdf5s_dir,
+            '{}.h5'.format(os.path.splitext(meta_dict['audio_filename'][n])[0])
+        )
+
+        create_folder(os.path.dirname(packed_hdf5_path))
+
+        with h5py.File(packed_hdf5_path, 'w') as hf:
+            hf.attrs.create('canonical_composer', data=meta_dict['canonical_composer'][n].encode(), dtype='S100')
+            hf.attrs.create('canonical_title', data=meta_dict['canonical_title'][n].encode(), dtype='S100')
+            hf.attrs.create('split', data=meta_dict['split'][n].encode(), dtype='S20')
+            hf.attrs.create('year', data=meta_dict['year'][n].encode(), dtype='S10')
+            hf.attrs.create('midi_filename', data=meta_dict['midi_filename'][n].encode(), dtype='S100')
+            hf.attrs.create('audio_filename', data=meta_dict['audio_filename'][n].encode(), dtype='S100')
+            hf.attrs.create('duration', data=meta_dict['duration'][n], dtype=np.float32)
+
+            hf.create_dataset(name='midi_event', data=[e.encode() for e in midi_dict['midi_event']], dtype='S100')
+            hf.create_dataset(name='midi_event_time', data=midi_dict['midi_event_time'], dtype=np.float32)
+            hf.create_dataset(name='waveform', data=float32_to_int16(audio), dtype=np.int16)
+
+    logging.info('Write HDF5 to {}'.format(packed_hdf5_path))
+    logging.info('Time: {:.3f} s'.format(time.time() - feature_time))
+
 
 def pack_maestro_dataset_to_hdf5(args):
     """Load & resample MAESTRO audio files, then write to hdf5 files.

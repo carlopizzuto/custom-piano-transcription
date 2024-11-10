@@ -24,7 +24,7 @@ WORKSPACE="./workspaces/piano_transcription_finetune"
 DATASET_DIR="./datasets/data"
 
 # Pack audio files to HDF5 format for training 
-python3 utils/features.py pack_maestro_dataset_to_hdf5 \
+python3 utils/features.py pack_other_dataset_to_hdf5 \
   --dataset_dir="$DATASET_DIR" \
   --workspace="$WORKSPACE"
 
