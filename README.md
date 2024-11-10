@@ -5,6 +5,17 @@
 
 Piano transcription is the task of transcribing piano recordings into MIDI files. This repo is the PyTorch implementation of our proposed high-resolution piano transcription system [1].
 
+The fine-tuning script is in ft.sh.
+
+Before running ft.sh, please run:
+
+- apt-get update
+- apt install sox libsox-fmt-all
+- python3 -m venv venv
+- source venv/bin/activate
+- python3 -m pip install --upgrade pip
+- pip install -r requirements.txt
+
 <a href="https://replicate.com/replicate/piano-transcription"><img src="https://replicate.com/replicate/piano-transcription/badge"></a>
 
 ## Demos
