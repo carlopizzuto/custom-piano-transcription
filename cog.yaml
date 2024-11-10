@@ -14,8 +14,8 @@ build:
   python_version: "3.8"
 
   python_packages:
-     - "torch==2.5.0"
-     - "torchvision==0.9.0"
+     - "torch==2.0.1+cu121"
+     - "torchvision==0.15.2+cu121"
      - "piano_transcription_inference==0.0.5"
      - "h5py==2.10.0"
      - "pandas==1.5.3"

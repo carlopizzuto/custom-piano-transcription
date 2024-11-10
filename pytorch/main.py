@@ -114,7 +114,10 @@ def train(args):
         if os.path.isfile(checkpoint_path):
             logging.info(f"Loading pretrained model from {checkpoint_path}")
             checkpoint = torch.load(checkpoint_path)
-            model.load_state_dict(checkpoint)
+            if 'model' in checkpoint:
+                model.load_state_dict(checkpoint['model'])
+            else:
+                model.load_state_dict(checkpoint)
         else:
             raise FileNotFoundError(f"Checkpoint path {checkpoint_path} does not exist.")
     else:

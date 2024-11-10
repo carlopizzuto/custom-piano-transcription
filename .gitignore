@@ -3,5 +3,9 @@
 !*.*
 *.hdf5
 *.pyc
+*.pth
 __pycache__
+
+/datasets
+/workspaces
 
