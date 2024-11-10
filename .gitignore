@@ -5,6 +5,7 @@
 *.pyc
 *.pth
 __pycache__
+/venv
 
 /datasets
 /workspaces

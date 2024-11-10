@@ -1,7 +1,7 @@
-torch==2.0.1+cu121
-torchvision==0.15.2+cu121
+torch==2.0.1
+torchvision==0.15.2
 piano_transcription_inference==0.0.5
-h5py==2.10.0
+h5py>=3.8.0
 pandas==1.5.3
 librosa==0.8.1
 numba==0.55.2
@@ -13,5 +13,5 @@ sox==1.4.0
 tqdm==4.62.3
 pretty_midi==0.2.9
 synthviz==0.0.2
-cog==0.5.14
+cog==0.13.0
 scikit-learn==1.2.2

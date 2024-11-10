@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # ============ Fine-Tune Piano Transcription System ============
+export PYTHONPATH=$(pwd):$PYTHONPATH
 
 # Download checkpoint and inference
-CHECKPOINT_PATH="pretrained.pth"
+CHECKPOINT_PATH="CRNN_note_F1=0.9677_pedal_F1=0.9186.pth"
 wget -O "$CHECKPOINT_PATH" "https://zenodo.org/record/4034264/files/CRNN_note_F1=0.9677_pedal_F1=0.9186.pth?download=1"
 
 # Note and pedal checkpoints
@@ -20,7 +21,7 @@ python3 pytorch/split_combined_checkpoint.py \
 WORKSPACE="./workspaces/piano_transcription_finetune"
 
 # Non-classical dataset directory (ensure this dataset is prepared beforehand)
-DATASET_DIR="./datasets/non_classical_piano"
+DATASET_DIR="./datasets/data"
 
 # Pack audio files to HDF5 format for training 
 python3 utils/features.py pack_maestro_dataset_to_hdf5 \
@@ -57,11 +58,13 @@ python3 pytorch/main.py train \
   --cuda \
   --checkpoint_path="$PEDAL_CHECKPOINT"
 
+exit 0
+
 # --- 3. Combine the Fine-Tuned Note and Pedal Models ---
 # Update the paths to your fine-tuned model checkpoints
-FINE_TUNED_NOTE_CHECKPOINT="path/to/fine_tuned_note_model.pth"
-FINE_TUNED_PEDAL_CHECKPOINT="path/to/fine_tuned_pedal_model.pth"
-FINE_TUNED_NOTE_PEDAL_CHECKPOINT="CRNN_note_pedal_finetuned.pth"
+NOTE_CHECKPOINT_PATH="Regress_onset_offset_frame_velocity_CRNN_onset_F1=0.9677.pth"
+PEDAL_CHECKPOINT_PATH="Regress_pedal_CRNN_onset_F1=0.9186.pth"
+NOTE_PEDAL_CHECKPOINT_PATH="CRNN_note_F1=0.9677_pedal_F1=0.9186.pth"
 
 python3 pytorch/combine_note_and_pedal_models.py \
   --note_checkpoint_path="$FINE_TUNED_NOTE_CHECKPOINT" \
