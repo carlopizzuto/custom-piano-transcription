@@ -218,6 +218,10 @@ if __name__ == '__main__':
     parser_pack_maestro = subparsers.add_parser('pack_maestro_dataset_to_hdf5')
     parser_pack_maestro.add_argument('--dataset_dir', type=str, required=True, help='Directory of dataset.')
     parser_pack_maestro.add_argument('--workspace', type=str, required=True, help='Directory of your workspace.')
+    
+    parser_pack_other = subparsers.add_parser('pack_other_dataset_to_hdf5')
+    parser_pack_other.add_argument('--dataset_dir', type=str, required=True, help='Directory of dataset.')
+    parser_pack_other.add_argument('--workspace', type=str, required=True, help='Directory of your workspace.')
 
     parser_pack_maps = subparsers.add_parser('pack_maps_dataset_to_hdf5')
     parser_pack_maps.add_argument('--dataset_dir', type=str, required=True, help='Directory of dataset.')
@@ -231,6 +235,9 @@ if __name__ == '__main__':
         
     elif args.mode == 'pack_maps_dataset_to_hdf5':
         pack_maps_dataset_to_hdf5(args)
+
+    elif args.mode == 'pack_other_dataset_to_hdf5':
+        pack_other_dataset_to_hdf5(args)
 
     else:
         raise Exception('Incorrect arguments!')
