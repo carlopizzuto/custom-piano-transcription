@@ -136,17 +136,17 @@ class AcousticModelCRnn8Dropout(nn.Module):
         """
 
         x = self.conv_block1(input, pool_size=(1, 2), pool_type='avg')
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training, inplace=False)
         x = self.conv_block2(x, pool_size=(1, 2), pool_type='avg')
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training, inplace=False)
         x = self.conv_block3(x, pool_size=(1, 2), pool_type='avg')
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training, inplace=False)
         x = self.conv_block4(x, pool_size=(1, 2), pool_type='avg')
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training, inplace=False)
 
         x = x.transpose(1, 2).flatten(2)
-        x = F.relu(self.bn5(self.fc5(x).transpose(1, 2)).transpose(1, 2))
-        x = F.dropout(x, p=0.5, training=self.training, inplace=True)
+        x = F.relu(self.bn5(self.fc5(x).transpose(1, 2)).transpose(1, 2), inplace=False)
+        x = F.dropout(x, p=0.5, training=self.training, inplace=False)
         
         (x, _) = self.gru(x)
         x = F.dropout(x, p=0.5, training=self.training, inplace=False)
