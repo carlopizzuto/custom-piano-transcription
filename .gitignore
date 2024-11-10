@@ -4,6 +4,7 @@
 *.hdf5
 *.pyc
 *.pth
+.DS_Store
 __pycache__
 /venv
 
