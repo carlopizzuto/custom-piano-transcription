@@ -26,6 +26,55 @@ from losses import get_loss_func
 from evaluate import SegmentEvaluator
 import config
 
+def get_loss_func(loss_type):
+    """Get the loss function for the given loss type.
+
+    Args:
+        loss_type: str, e.g. 'regression_onset_offset_frame_velocity'
+    """
+    if loss_type == 'regression_onset_offset_frame_velocity':
+        def loss_func(model, output_dict, target_dict):
+            # Extract outputs
+            onset_output = output_dict['onset_output']
+            offset_output = output_dict['offset_output']
+            frame_output = output_dict['frame_output']
+            velocity_output = output_dict['velocity_output']
+
+            # Extract targets
+            onset_target = target_dict['onset_roll']
+            offset_target = target_dict['offset_roll']
+            frame_target = target_dict['frame_roll']
+            velocity_target = target_dict['velocity_roll']
+
+            # Compute individual losses
+            onset_loss = F.mse_loss(onset_output, onset_target)
+            offset_loss = F.mse_loss(offset_output, offset_target)
+            frame_loss = F.mse_loss(frame_output, frame_target)
+            velocity_loss = F.mse_loss(velocity_output, velocity_target)
+
+            # Total loss
+            total_loss = onset_loss + offset_loss + frame_loss + velocity_loss
+
+            return total_loss
+
+        return loss_func
+
+    elif loss_type == 'regression_pedal':
+        def loss_func(model, output_dict, target_dict):
+            # Extract outputs and targets
+            pedal_output = output_dict['pedal_output']
+            pedal_target = target_dict['pedal_roll']
+
+            # Compute loss
+            pedal_loss = F.mse_loss(pedal_output, pedal_target)
+
+            return pedal_loss
+
+        return loss_func
+
+    else:
+        raise ValueError(f'Unsupported loss_type: {loss_type}')
+
 
 def train(args):
     """Train a piano transcription system.
@@ -69,7 +118,9 @@ def train(args):
     classes_num = config.classes_num
     num_workers = 8
     
-    torch.autograd.set_detect_anomaly(True)
+    # Enable anomaly detection
+    if args.anomaly_detection:
+        torch.autograd.set_detect_anomaly(True)
 
     # Loss function
     loss_func = get_loss_func(loss_type)
@@ -209,15 +260,17 @@ def train(args):
 
     if 'cuda' in str(device):
         model.to(device)
+        
+    best_validate_loss = float('inf')  # Use -inf if higher is better
 
     train_bgn_time = time.time()
 
     for batch_data_dict in train_loader:
         
         # Evaluation 
-        if iteration % 5000 == 0:# and iteration > 0:
+        if iteration % 50 == 0:# and iteration > 0:
             logging.info('------------------------------------')
-            logging.info('Iteration: {}'.format(iteration))
+            logging.info('Iteration: {}'.format(iteration)) 
 
             train_fin_time = time.time()
 
@@ -316,6 +369,7 @@ if __name__ == '__main__':
     parser_train.add_argument('--mini_data', action='store_true', default=False)
     parser_train.add_argument('--cuda', action='store_true', default=False)
     parser_train.add_argument('--checkpoint_path', type=str, required=False, help="Path to pretrained model checkpoint for fine-tuning.")
+    parser_train.add_argument('--anomaly_detection', action='store_true', default=False)
 
     args = parser.parse_args()
     args.filename = get_filename(__file__)

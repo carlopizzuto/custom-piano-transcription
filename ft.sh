@@ -30,6 +30,7 @@ python3 utils/features.py pack_other_dataset_to_hdf5 \
 
 # --- 1. Fine-Tune Note Transcription System ---
 BATCH_SIZE=2
+ANOMALY_DETECTION=false
 
 python3 pytorch/main.py train \
   --workspace="$WORKSPACE" \
@@ -44,7 +45,8 @@ python3 pytorch/main.py train \
   --early_stop=100 \
   --cuda \
   --checkpoint_path="$NOTE_CHECKPOINT" \
-  --mini_data
+  --mini_data \
+  --anomaly_detection=$ANOMALY_DETECTION
 
 # --- 2. Fine-Tune Pedal Transcription System ---
 python3 pytorch/main.py train \
@@ -60,7 +62,8 @@ python3 pytorch/main.py train \
   --early_stop=100 \
   --cuda \
   --checkpoint_path="$PEDAL_CHECKPOINT" \
-  --mini_data
+  --mini_data \
+  --anomaly_detection=$ANOMALY_DETECTION
 
 exit 0
 
