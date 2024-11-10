@@ -68,6 +68,8 @@ def train(args):
     frames_per_second = config.frames_per_second
     classes_num = config.classes_num
     num_workers = 8
+    
+    torch.autograd.set_detect_anomaly(True)
 
     # Loss function
     loss_func = get_loss_func(loss_type)
