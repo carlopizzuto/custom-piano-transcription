@@ -39,9 +39,9 @@ python3 pytorch/main.py train \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
   --learning_rate=1e-5 \
-  --reduce_iteration=100 \
+  --reduce_iteration=101 \
   --resume_iteration=0 \
-  --early_stop=100 \
+  --early_stop=101 \
   --cuda \
   --checkpoint_path="$NOTE_CHECKPOINT" \
   --mini_data
@@ -55,9 +55,9 @@ python3 pytorch/main.py train \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
   --learning_rate=1e-5 \
-  --reduce_iteration=100 \
+  --reduce_iteration=101 \
   --resume_iteration=0 \
-  --early_stop=100 \
+  --early_stop=101 \
   --cuda \
   --checkpoint_path="$PEDAL_CHECKPOINT" \
   --mini_data

@@ -215,7 +215,7 @@ def train(args):
     for batch_data_dict in train_loader:
         
         # Evaluation 
-        if iteration % 5000 == 0:# and iteration > 0:
+        if iteration % 50 == 0:# and iteration > 0:
             logging.info('------------------------------------')
             logging.info('Iteration: {}'.format(iteration))
 
@@ -240,6 +240,17 @@ def train(args):
             logging.info(
                 'Train time: {:.3f} s, validate time: {:.3f} s'
                 ''.format(train_time, validate_time))
+            
+            if validate_statistics['F1'] < best_val_loss:
+                best_val_loss = validate_statistics['F1']
+                best_checkpoint = {
+                    'iteration': iteration, 
+                    'model': model.module.state_dict(), 
+                    'sampler': train_sampler.state_dict()
+                }
+                best_checkpoint_path = os.path.join(checkpoints_dir, 'best_model.pth')
+                torch.save(best_checkpoint, best_checkpoint_path)
+                logging.info('Best model updated and saved to {}'.format(best_checkpoint_path))
 
             train_bgn_time = time.time()
         
