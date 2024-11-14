@@ -210,9 +210,20 @@ def train(args):
     if 'cuda' in str(device):
         model.to(device)
         
-    best_frame_ap = -float('inf')
+    if model_type == 'Regress_onset_offset_frame_velocity_CRNN':
+        best_metric = -float('inf')  # Higher is better
+        metric_key = 'frame_ap'
+        maximize = True
+    elif model_type == 'Regress_pedal_CRNN':
+        best_metric = float('inf')   # Lower is better
+        metric_key = 'pedal_frame_mae'
+        maximize = False
+    else:
+        raise ValueError(f"Unsupported model_type: {model_type}")
 
     train_bgn_time = time.time()
+    
+    print("="*20 + "Training" + "="*20)
 
     for batch_data_dict in train_loader:
         
@@ -243,14 +254,14 @@ def train(args):
                 'Train time: {:.3f} s, validate time: {:.3f} s'
                 ''.format(train_time, validate_time))
             
-            current_frame_ap = validate_statistics.get('frame_ap', None)
+            current_metric = validate_statistics.get(metric_key, None)
             
-            if current_frame_ap is not None:
-                logging.info('Current Validation Frame AP: {:.4f}'.format(current_frame_ap))
+            if current_metric is not None:
+                logging.info(f'Current Validation {metric_key}: {current_metric:.4f}')
                 
-                # Check if current frame_ap is better than the best_frame_ap
-                if current_frame_ap > best_frame_ap:
-                    best_frame_ap = current_frame_ap
+                # Check if current metric is better than the best_metric
+                if (maximize and current_metric > best_metric) or (not maximize and current_metric < best_metric):
+                    best_metric = current_metric
                     best_checkpoint = {
                         'iteration': iteration, 
                         'model': model.module.state_dict(), 
@@ -259,9 +270,11 @@ def train(args):
                     }
                     best_checkpoint_path = os.path.join(workspace, '{}_best_model.pth'.format(model_type))
                     torch.save(best_checkpoint, best_checkpoint_path)
-                    logging.info('Best model updated and saved to {}'.format(best_checkpoint_path))
+                    logging.info(f'Best model updated and saved to {best_checkpoint_path}')
+                else:
+                    logging.info(f'Current Validation {metric_key}: {current_metric:.4f} is not better than the best {metric_key}: {best_metric:.4f}')
             else:
-                logging.warning('frame_ap not found in validation statistics.')
+                logging.warning(f'{metric_key} not found in validation statistics.')
 
             train_bgn_time = time.time()
         
