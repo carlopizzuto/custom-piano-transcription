@@ -209,6 +209,8 @@ def train(args):
 
     if 'cuda' in str(device):
         model.to(device)
+        
+    best_frame_ap = -float('inf')
 
     train_bgn_time = time.time()
 
@@ -241,16 +243,25 @@ def train(args):
                 'Train time: {:.3f} s, validate time: {:.3f} s'
                 ''.format(train_time, validate_time))
             
-            if validate_statistics['F1'] < best_val_loss:
-                best_val_loss = validate_statistics['F1']
-                best_checkpoint = {
-                    'iteration': iteration, 
-                    'model': model.module.state_dict(), 
-                    'sampler': train_sampler.state_dict()
-                }
-                best_checkpoint_path = os.path.join(checkpoints_dir, 'best_model.pth')
-                torch.save(best_checkpoint, best_checkpoint_path)
-                logging.info('Best model updated and saved to {}'.format(best_checkpoint_path))
+            current_frame_ap = validate_statistics.get('frame_ap', None)
+            
+            if current_frame_ap is not None:
+                logging.info('Current Validation Frame AP: {:.4f}'.format(current_frame_ap))
+                
+                # Check if current frame_ap is better than the best_frame_ap
+                if current_frame_ap > best_frame_ap:
+                    best_frame_ap = current_frame_ap
+                    best_checkpoint = {
+                        'iteration': iteration, 
+                        'model': model.module.state_dict(), 
+                        'sampler': train_sampler.state_dict(),
+                        'optimizer': optimizer.state_dict()
+                    }
+                    best_checkpoint_path = os.path.join(workspace, '{}_best_model.pth'.format(model_type))
+                    torch.save(best_checkpoint, best_checkpoint_path)
+                    logging.info('Best model updated and saved to {}'.format(best_checkpoint_path))
+            else:
+                logging.warning('frame_ap not found in validation statistics.')
 
             train_bgn_time = time.time()
         
@@ -271,6 +282,7 @@ def train(args):
         if iteration % reduce_iteration == 0 and iteration > 0:
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.9
+            logging.info('Learning rate reduced to {:.6f}'.format(param_group['lr']))
         
         # Move data to device
         for key in batch_data_dict.keys():
@@ -291,6 +303,7 @@ def train(args):
         
         # Stop learning
         if iteration == early_stop:
+            logging.info('Early stopping at iteration {}'.format(iteration))
             break
 
         iteration += 1
