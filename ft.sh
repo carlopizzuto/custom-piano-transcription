@@ -5,17 +5,17 @@ export PYTHONPATH=$(pwd):$PYTHONPATH
 
 # Download checkpoint and inference
 CHECKPOINT_PATH="CRNN_note_F1=0.9677_pedal_F1=0.9186.pth"
-wget -O "$CHECKPOINT_PATH" "https://zenodo.org/record/4034264/files/CRNN_note_F1=0.9677_pedal_F1=0.9186.pth?download=1"
+# wget -O "$CHECKPOINT_PATH" "https://zenodo.org/record/4034264/files/CRNN_note_F1=0.9677_pedal_F1=0.9186.pth?download=1"
 
 # Note and pedal checkpoints
 NOTE_CHECKPOINT="onset_offset_frame_velocity_pretrained.pth"
 PEDAL_CHECKPOINT="pedal_pretrained.pth"
 
 # Split combined checkpoint into note and pedal checkpoints
-python3 pytorch/split_combined_checkpoint.py \
-  --combined_checkpoint_path="$CHECKPOINT_PATH" \
-  --note_checkpoint_path="$NOTE_CHECKPOINT" \
-  --pedal_checkpoint_path="$PEDAL_CHECKPOINT"
+# python3 pytorch/split_combined_checkpoint.py \
+#   --combined_checkpoint_path="$CHECKPOINT_PATH" \
+#   --note_checkpoint_path="$NOTE_CHECKPOINT" \
+#   --pedal_checkpoint_path="$PEDAL_CHECKPOINT"
 
 # Workspace directory where intermediate results will be saved
 WORKSPACE="./workspaces/piano_transcription_finetune"
@@ -24,9 +24,9 @@ WORKSPACE="./workspaces/piano_transcription_finetune"
 DATASET_DIR="./datasets/data"
 
 # Pack audio files to HDF5 format for training 
-python3 utils/features.py pack_other_dataset_to_hdf5 \
-  --dataset_dir="$DATASET_DIR" \
-  --workspace="$WORKSPACE"
+# python3 utils/features.py pack_other_dataset_to_hdf5 \
+#   --dataset_dir="$DATASET_DIR" \
+#   --workspace="$WORKSPACE"
 
 # --- 1. Fine-Tune Note Transcription System ---
 BATCH_SIZE=2
