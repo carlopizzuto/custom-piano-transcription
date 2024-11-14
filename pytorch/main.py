@@ -26,26 +26,18 @@ from losses import get_loss_func
 from evaluate import SegmentEvaluator
 import config
 
+import pprint
+
 
 def train(args):
     """Train a piano transcription system.
 
     Args:
-      workspace: str, directory of your workspace
-      model_type: str, e.g. 'Regressonset_regressoffset_frame_velocity_CRNN'
-      loss_type: str, e.g. 'regress_onset_offset_frame_velocity_bce'
-      augmentation: str, e.g. 'none'
-      batch_size: int
-      learning_rate: float
-      reduce_iteration: int
-      resume_iteration: int
-      early_stop: int
-      device: 'cuda' | 'cpu'
-      mini_data: bool
-      checkpoint_path: str
+        args: Parsed command-line arguments.
     """
-
-    # Arugments & parameters
+    # ---------------------
+    # Extract Arguments
+    # ---------------------
     workspace = args.workspace
     model_type = args.model_type
     loss_type = args.loss_type
@@ -61,6 +53,9 @@ def train(args):
     filename = args.filename
     checkpoint_path = args.checkpoint_path
     
+    # ---------------------
+    # Configuration Parameters
+    # ---------------------
     sample_rate = config.sample_rate
     segment_seconds = config.segment_seconds
     segment_samples = int(segment_seconds * sample_rate)
@@ -71,36 +66,52 @@ def train(args):
     
     torch.autograd.set_detect_anomaly(True)
 
+    # ---------------------
+    # Initialize Components
+    # ---------------------
     # Loss function
     loss_func = get_loss_func(loss_type)
 
-    # Paths
+    # Directory paths
     hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maestro')
-
-    checkpoints_dir = os.path.join(workspace, 'checkpoints', filename, 
-        model_type, 'loss_type={}'.format(loss_type), 
-        'augmentation={}'.format(augmentation), 
-        'max_note_shift={}'.format(max_note_shift),
-        'batch_size={}'.format(batch_size))
+    checkpoints_dir = os.path.join(
+        workspace, 
+        'checkpoints', 
+        model_type,
+    )
     create_folder(checkpoints_dir)
+    
+    statistics_path = os.path.join(
+        workspace, 
+        'statistics', 
+        model_type,
+        f'loss_type={loss_type}',
+        f'augmentation={augmentation}',
+        f'max_note_shift={max_note_shift}',
+        f'batch_size={batch_size}',
+        'statistics.pkl'
+    )
+    create_folder(statistics_path)
 
-    statistics_path = os.path.join(workspace, 'statistics', filename, 
-        model_type, 'loss_type={}'.format(loss_type), 
-        'augmentation={}'.format(augmentation), 
-        'max_note_shift={}'.format(max_note_shift), 
-        'batch_size={}'.format(batch_size), 'statistics.pkl')
-    create_folder(os.path.dirname(statistics_path))
-
-    logs_dir = os.path.join(workspace, 'logs', filename, 
-        model_type, 'loss_type={}'.format(loss_type), 
-        'augmentation={}'.format(augmentation), 
-        'max_note_shift={}'.format(max_note_shift), 
-        'batch_size={}'.format(batch_size))
+    logs_dir = os.path.join(
+        workspace, 
+        'logs', 
+        model_type,
+        f'loss_type={loss_type}',
+        f'augmentation={augmentation}',
+        f'max_note_shift={max_note_shift}',
+        f'batch_size={batch_size}'
+    )
     create_folder(logs_dir)
 
+    # Setup logging
     create_logging(logs_dir, filemode='w')
-    logging.info(args)
+    pretty_args = pprint.pformat(vars(args))
+    logging.info(f"Training Arguments:\n{pretty_args}")
 
+    # ---------------------
+    # Device Configuration
+    # ---------------------
     if 'cuda' in str(device):
         logging.info('Using GPU.')
         device = 'cuda'
@@ -223,24 +234,27 @@ def train(args):
 
     train_bgn_time = time.time()
     
-    print("="*20 + "Training" + "="*20)
+    print("="*30 + " Training " + "="*30)
 
     for batch_data_dict in train_loader:
         
         # Evaluation 
         if iteration % 50 == 0:# and iteration > 0:
-            logging.info('------------------------------------')
-            logging.info('Iteration: {}'.format(iteration))
-
             train_fin_time = time.time()
+            
+            if iteration > 0:
+                print('-'*90)
+            logging.info('Iteration: {}'.format(iteration))
+            logging.info('Validating ...')
+
 
             evaluate_train_statistics = evaluator.evaluate(evaluate_train_loader)
             validate_statistics = evaluator.evaluate(validate_loader)
             test_statistics = evaluator.evaluate(test_loader)
 
-            logging.info('    Train statistics: {}'.format(evaluate_train_statistics))
-            logging.info('    Validation statistics: {}'.format(validate_statistics))
-            logging.info('    Test statistics: {}'.format(test_statistics))
+            logging.info('Train statistics: {}'.format(evaluate_train_statistics))
+            logging.info('Validation statistics: {}'.format(validate_statistics))
+            logging.info('Test statistics: {}'.format(test_statistics))
 
             statistics_container.append(iteration, evaluate_train_statistics, data_type='train')
             statistics_container.append(iteration, validate_statistics, data_type='validation')
@@ -272,10 +286,11 @@ def train(args):
                     torch.save(best_checkpoint, best_checkpoint_path)
                     logging.info(f'Best model updated and saved to {best_checkpoint_path}')
                 else:
-                    logging.info(f'Current Validation {metric_key}: {current_metric:.4f} is not better than the best {metric_key}: {best_metric:.4f}')
+                    logging.info(f'Current {metric_key} is NOT better than the best {metric_key}: {best_metric:.4f}')
             else:
                 logging.warning(f'{metric_key} not found in validation statistics.')
 
+            print('-'*90)
             train_bgn_time = time.time()
         
         # Save model
@@ -306,7 +321,8 @@ def train(args):
 
         loss = loss_func(model, batch_output_dict, batch_data_dict)
 
-        print(iteration, loss)
+        print("="*25)
+        print("Iteration: {}\nLoss: {}".format(iteration, loss))
 
         # Backward
         loss.backward()
@@ -350,3 +366,4 @@ if __name__ == '__main__':
 
     else:
         raise Exception('Error argument!')
+    
