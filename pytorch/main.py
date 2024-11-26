@@ -261,8 +261,9 @@ def train(args):
     if 'cuda' in str(device):
         model.to(device)
         
-    best_validate_loss = float('inf')  # Use -inf if higher is better
-
+    best_validate_statistics = None
+    best_iteration = 0
+    
     train_bgn_time = time.time()
 
     for batch_data_dict in train_loader:
@@ -336,18 +337,46 @@ def train(args):
             break
 
         iteration += 1
+        
+        # Save best model based on validation frame_ap
+        if best_validate_statistics is None or \
+            validate_statistics['frame_ap'] > best_validate_statistics['frame_ap']:
+            
+            best_validate_statistics = validate_statistics
+            best_iteration = iteration
+            
+            # Save best model
+            checkpoint = {
+                'iteration': iteration, 
+                'model': model.module.state_dict(), 
+                'sampler': train_sampler.state_dict(),
+                'validate_statistics': validate_statistics,
+                'test_statistics': test_statistics
+            }
+            
+            best_checkpoint_path = os.path.join(
+                checkpoints_dir, 'best_model.pth')
+                
+            torch.save(checkpoint, best_checkpoint_path)
+            logging.info('Best model saved to {} at iteration {}'.format(
+                best_checkpoint_path, iteration))
+            logging.info('Best validation statistics: {}'.format(validate_statistics))
     
-    checkpoint = {
-        'iteration': iteration, 
-        'model': model.module.state_dict(), 
-        'sampler': train_sampler.state_dict()
-    }
-    checkpoint_path = os.path.join(
-        workspace, f'final_{model_type}_{iteration}_iters.pth'
+    # After training, log final results
+    logging.info('Training finished!')
+    logging.info('Best iteration: {}'.format(best_iteration))
+    logging.info('Best validation statistics: {}'.format(best_validate_statistics))
+    
+    # Load and save best model with a more descriptive name
+    best_model_final_path = os.path.join(
+        workspace, 
+        f'best_{model_type}_iter_{best_iteration}_valid_ap_{best_validate_statistics["frame_ap"]:.4f}.pth'
     )
-
-    torch.save(checkpoint, checkpoint_path)
-    logging.info(f'Final model saved to {checkpoint_path}')
+    
+    # Copy best model to final location
+    checkpoint = torch.load(os.path.join(checkpoints_dir, 'best_model.pth'))
+    torch.save(checkpoint, best_model_final_path)
+    logging.info(f'Best model copied to {best_model_final_path}')
 
 
 if __name__ == '__main__':
