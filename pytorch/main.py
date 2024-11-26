@@ -294,6 +294,31 @@ def train(args):
             logging.info(
                 'Train time: {:.3f} s, validate time: {:.3f} s'
                 ''.format(train_time, validate_time))
+            
+            # Save best model based on validation frame_ap
+            if best_validate_statistics is None or \
+                (model_type == 'Regress_onset_offset_frame_velocity_CRNN' and validate_statistics['frame_ap'] > best_validate_statistics['frame_ap']) or \
+                (model_type == 'Regress_pedal_CRNN' and validate_statistics['pedal_ap'] > best_validate_statistics['pedal_ap']):
+                
+                best_validate_statistics = validate_statistics
+                best_iteration = iteration
+                
+                # Save best model
+                checkpoint = {
+                    'iteration': iteration, 
+                    'model': model.module.state_dict(), 
+                    'sampler': train_sampler.state_dict(),
+                    'validate_statistics': validate_statistics,
+                    'test_statistics': test_statistics
+                }
+                
+                best_checkpoint_path = os.path.join(
+                    checkpoints_dir, '{}_iter_{}_valid_ap_{:.3f}.pth'.format(model_type, iteration, validate_statistics['frame_ap']))
+                    
+                torch.save(checkpoint, best_checkpoint_path)
+                logging.info('Best model saved to {} at iteration {}'.format(
+                    best_checkpoint_path, iteration))
+                logging.info('Best validation statistics: {}'.format(validate_statistics))
 
             train_bgn_time = time.time()
         
@@ -312,6 +337,7 @@ def train(args):
         
         # Reduce learning rate
         if iteration % reduce_iteration == 0 and iteration > 0:
+            logging.info('===== Reducing learning rate =====')
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.9
         
@@ -324,7 +350,7 @@ def train(args):
 
         loss = loss_func(model, batch_output_dict, batch_data_dict)
 
-        print(iteration, loss)
+        logging.info('Iteration: {} ==== Loss: {:.4f}'.format(iteration, loss))
 
         # Backward
         loss.backward()
@@ -337,46 +363,13 @@ def train(args):
             break
 
         iteration += 1
-        
-        # Save best model based on validation frame_ap
-        if best_validate_statistics is None or \
-            validate_statistics['frame_ap'] > best_validate_statistics['frame_ap']:
-            
-            best_validate_statistics = validate_statistics
-            best_iteration = iteration
-            
-            # Save best model
-            checkpoint = {
-                'iteration': iteration, 
-                'model': model.module.state_dict(), 
-                'sampler': train_sampler.state_dict(),
-                'validate_statistics': validate_statistics,
-                'test_statistics': test_statistics
-            }
-            
-            best_checkpoint_path = os.path.join(
-                checkpoints_dir, 'best_model.pth')
-                
-            torch.save(checkpoint, best_checkpoint_path)
-            logging.info('Best model saved to {} at iteration {}'.format(
-                best_checkpoint_path, iteration))
-            logging.info('Best validation statistics: {}'.format(validate_statistics))
     
     # After training, log final results
+    logging.info('='*50)
     logging.info('Training finished!')
+    logging.info('-'*50)
     logging.info('Best iteration: {}'.format(best_iteration))
     logging.info('Best validation statistics: {}'.format(best_validate_statistics))
-    
-    # Load and save best model with a more descriptive name
-    best_model_final_path = os.path.join(
-        workspace, 
-        f'best_{model_type}_iter_{best_iteration}_valid_ap_{best_validate_statistics["frame_ap"]:.4f}.pth'
-    )
-    
-    # Copy best model to final location
-    checkpoint = torch.load(os.path.join(checkpoints_dir, 'best_model.pth'))
-    torch.save(checkpoint, best_model_final_path)
-    logging.info(f'Best model copied to {best_model_final_path}')
 
 
 if __name__ == '__main__':
