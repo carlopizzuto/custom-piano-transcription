@@ -206,10 +206,6 @@ def train(args):
         split='validation', segment_seconds=segment_seconds, hop_seconds=hop_seconds, 
         batch_size=batch_size, mini_data=mini_data)
 
-    evaluate_test_sampler = TestSampler(hdf5s_dir=hdf5s_dir, 
-        split='test', segment_seconds=segment_seconds, hop_seconds=hop_seconds, 
-        batch_size=batch_size, mini_data=mini_data)
-
     # Dataloader
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, 
         batch_sampler=train_sampler, collate_fn=collate_fn, 
@@ -223,9 +219,6 @@ def train(args):
         batch_sampler=evaluate_validate_sampler, collate_fn=collate_fn, 
         num_workers=num_workers, pin_memory=True)
 
-    test_loader = torch.utils.data.DataLoader(dataset=evaluate_dataset, 
-        batch_sampler=evaluate_test_sampler, collate_fn=collate_fn, 
-        num_workers=num_workers, pin_memory=True)
 
     # Evaluator
     evaluator = SegmentEvaluator(model, batch_size)
@@ -277,15 +270,12 @@ def train(args):
 
             evaluate_train_statistics = evaluator.evaluate(evaluate_train_loader)
             validate_statistics = evaluator.evaluate(validate_loader)
-            test_statistics = evaluator.evaluate(test_loader)
 
             logging.info('    Train statistics: {}'.format(evaluate_train_statistics))
             logging.info('    Validation statistics: {}'.format(validate_statistics))
-            logging.info('    Test statistics: {}'.format(test_statistics))
 
             statistics_container.append(iteration, evaluate_train_statistics, data_type='train')
             statistics_container.append(iteration, validate_statistics, data_type='validation')
-            statistics_container.append(iteration, test_statistics, data_type='test')
             statistics_container.dump()
 
             train_time = train_fin_time - train_bgn_time
@@ -309,7 +299,6 @@ def train(args):
                     'model': model.module.state_dict(), 
                     'sampler': train_sampler.state_dict(),
                     'validate_statistics': validate_statistics,
-                    'test_statistics': test_statistics
                 }
                 
                 best_checkpoint_path = os.path.join(
