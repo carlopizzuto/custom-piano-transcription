@@ -26,55 +26,6 @@ from losses import get_loss_func
 from evaluate import SegmentEvaluator
 import config
 
-def get_loss_func(loss_type):
-    """Get the loss function for the given loss type.
-
-    Args:
-        loss_type: str, e.g. 'regression_onset_offset_frame_velocity'
-    """
-    if loss_type == 'regression_onset_offset_frame_velocity':
-        def loss_func(model, output_dict, target_dict):
-            # Extract outputs
-            onset_output = output_dict['onset_output']
-            offset_output = output_dict['offset_output']
-            frame_output = output_dict['frame_output']
-            velocity_output = output_dict['velocity_output']
-
-            # Extract targets
-            onset_target = target_dict['onset_roll']
-            offset_target = target_dict['offset_roll']
-            frame_target = target_dict['frame_roll']
-            velocity_target = target_dict['velocity_roll']
-
-            # Compute individual losses
-            onset_loss = F.mse_loss(onset_output, onset_target)
-            offset_loss = F.mse_loss(offset_output, offset_target)
-            frame_loss = F.mse_loss(frame_output, frame_target)
-            velocity_loss = F.mse_loss(velocity_output, velocity_target)
-
-            # Total loss
-            total_loss = onset_loss + offset_loss + frame_loss + velocity_loss
-
-            return total_loss
-
-        return loss_func
-
-    elif loss_type == 'regression_pedal':
-        def loss_func(model, output_dict, target_dict):
-            # Extract outputs and targets
-            pedal_output = output_dict['pedal_output']
-            pedal_target = target_dict['pedal_roll']
-
-            # Compute loss
-            pedal_loss = F.mse_loss(pedal_output, pedal_target)
-
-            return pedal_loss
-
-        return loss_func
-
-    else:
-        raise ValueError(f'Unsupported loss_type: {loss_type}')
-
 
 def train(args):
     """Train a piano transcription system.
