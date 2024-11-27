@@ -208,22 +208,25 @@ def train(args):
     best_validate_statistics = None
     best_iteration = 0
     
+    logging.info('Training starting...')
+    logging.info('='*50)
+    
     train_bgn_time = time.time()
 
     for batch_data_dict in train_loader:
         
         # Evaluation 
-        if iteration % 50 == 0:# and iteration > 0:
-            logging.info('------------------------------------')
-            logging.info('Iteration: {}'.format(iteration)) 
+        if iteration % 50 == 0 and iteration > 0:
+            logging.info('-'*50)
+            logging.info('Validating at iteration {}'.format(iteration)) 
 
             train_fin_time = time.time()
 
             evaluate_train_statistics = evaluator.evaluate(evaluate_train_loader)
             validate_statistics = evaluator.evaluate(validate_loader)
 
-            logging.info('    Train statistics: {}'.format(evaluate_train_statistics))
-            logging.info('    Validation statistics: {}'.format(validate_statistics))
+            logging.info('Train statistics: {}'.format(evaluate_train_statistics))
+            logging.info('Validation statistics: {}'.format(validate_statistics))
 
             statistics_container.append(iteration, evaluate_train_statistics, data_type='train')
             statistics_container.append(iteration, validate_statistics, data_type='validation')
@@ -259,6 +262,7 @@ def train(args):
                 logging.info('Best model saved to {} at iteration {}'.format(
                     best_checkpoint_path, iteration))
                 logging.info('Best validation statistics: {}'.format(validate_statistics))
+                logging.info('-'*50)
 
             train_bgn_time = time.time()
         
@@ -306,7 +310,7 @@ def train(args):
     
     # After training, log final results
     logging.info('='*50)
-    logging.info('Training finished!')
+    logging.info('Training finished')
     logging.info('-'*50)
     logging.info('Best iteration: {}'.format(best_iteration))
     logging.info('Best validation statistics: {}'.format(best_validate_statistics))
