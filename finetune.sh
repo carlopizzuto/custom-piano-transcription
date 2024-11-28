@@ -20,7 +20,7 @@ python3 pytorch/split_combined_checkpoint.py \
   --pedal_checkpoint_path="$PEDAL_CHECKPOINT"
 
 # Workspace directory where intermediate results will be saved
-WORKSPACE="./workspaces/piano_transcription_finetune"
+WORKSPACE="/workspace/finetune"
 
 # Create workspace directory if it doesn't exist
 if [ ! -d "$WORKSPACE" ]; then
@@ -29,7 +29,7 @@ if [ ! -d "$WORKSPACE" ]; then
 fi
 
 # Non-classical dataset directory (ensure this dataset is prepared beforehand)
-DATASET_DIR="/workspace/data"
+DATASET_DIR="/workspace/datasets/data"
 
 # Pack audio files to HDF5 format for training 
 # python3 utils/features.py pack_other_dataset_to_hdf5 \
