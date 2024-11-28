@@ -28,18 +28,16 @@ if [ ! -d "$WORKSPACE" ]; then
     echo "Created workspace directory: $WORKSPACE"
 fi
 
-
 # Non-classical dataset directory (ensure this dataset is prepared beforehand)
-DATASET_DIR="./datasets/data"
+DATASET_DIR="/workspace/data"
 
 # Pack audio files to HDF5 format for training 
-python3 utils/features.py pack_other_dataset_to_hdf5 \
-  --dataset_dir="$DATASET_DIR" \
-  --workspace="$WORKSPACE"
+# python3 utils/features.py pack_other_dataset_to_hdf5 \
+#   --dataset_dir="$DATASET_DIR" \
+#  --workspace="$WORKSPACE"
 
 # --- 1. Fine-Tune Note Transcription System ---
-BATCH_SIZE=2
-ANOMALY_DETECTION=false
+BATCH_SIZE=4
 
 python3 pytorch/main.py train \
   --workspace="$WORKSPACE" \
@@ -48,14 +46,14 @@ python3 pytorch/main.py train \
   --augmentation='none' \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
-  --learning_rate=1e-5 \
+  --learning_rate=5e-5 \
   --reduce_iteration=100 \
   --resume_iteration=0 \
-  --early_stop=100 \
+  --early_stop=200 \
   --cuda \
   --checkpoint_path="$NOTE_CHECKPOINT" \
   --mini_data \
-  --anomaly_detection=$ANOMALY_DETECTION
+  --anomaly_detection
 
 # --- 2. Fine-Tune Pedal Transcription System ---
 python3 pytorch/main.py train \
@@ -65,14 +63,14 @@ python3 pytorch/main.py train \
   --augmentation='none' \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
-  --learning_rate=1e-5 \
+  --learning_rate=5e-6 \
   --reduce_iteration=100 \
   --resume_iteration=0 \
-  --early_stop=100 \
+  --early_stop=200 \
   --cuda \
   --checkpoint_path="$PEDAL_CHECKPOINT" \
   --mini_data \
-  --anomaly_detection=$ANOMALY_DETECTION
+  --anomaly_detection
 
 exit 0
 
@@ -108,7 +106,7 @@ python3 pytorch/calculate_score_for_paper.py infer_prob \
 
 # Calculate metrics
 python3 pytorch/calculate_score_for_paper.py calculate_metrics \
-  --workspace="$WORKSPACE" \
+  --workspace="./workspaces/piano_transcription_finetune" \
   --model_type='Note_pedal' \
   --augmentation='none' \
   --dataset='your_dataset' \
