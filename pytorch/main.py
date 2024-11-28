@@ -251,7 +251,9 @@ def train(args):
             logging.info('Model saved to: {}'.format(checkpoint_path))
             
             # Save best model based on validation frame_ap or pedal_frame_mae
-            if best_validate_statistics is None or validate_statistics[eval_metric] > best_validate_statistics[eval_metric]:
+            if best_validate_statistics is None or \
+                (model_type == 'Regress_onset_offset_frame_velocity_CRNN' and validate_statistics[eval_metric] > best_validate_statistics[eval_metric]) or \
+                (model_type == 'Regress_pedal_CRNN' and validate_statistics[eval_metric] < best_validate_statistics[eval_metric]):
                 logging.info('** Better model found at iteration {} **'.format(iteration))
                 
                 best_validate_statistics = validate_statistics
