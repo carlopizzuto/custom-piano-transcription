@@ -3,6 +3,7 @@ import sys
 sys.path.insert(1, os.path.join(sys.path[0], '../utils'))
 import numpy as np
 import argparse
+import pprint
 import h5py
 import math
 import time
@@ -25,7 +26,6 @@ from pytorch_utils import move_data_to_device
 from losses import get_loss_func
 from evaluate import SegmentEvaluator
 import config
-
 
 def train(args):
     """Train a piano transcription system.
@@ -80,28 +80,25 @@ def train(args):
     hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maestro')
 
     checkpoints_dir = os.path.join(workspace, 'checkpoints', filename, 
-        model_type, 'loss_type={}'.format(loss_type), 
+        model_type,
         'augmentation={}'.format(augmentation), 
-        'max_note_shift={}'.format(max_note_shift),
         'batch_size={}'.format(batch_size))
     create_folder(checkpoints_dir)
 
     statistics_path = os.path.join(workspace, 'statistics', filename, 
         model_type, 'loss_type={}'.format(loss_type), 
         'augmentation={}'.format(augmentation), 
-        'max_note_shift={}'.format(max_note_shift), 
         'batch_size={}'.format(batch_size), 'statistics.pkl')
     create_folder(os.path.dirname(statistics_path))
 
     logs_dir = os.path.join(workspace, 'logs', filename, 
         model_type, 'loss_type={}'.format(loss_type), 
         'augmentation={}'.format(augmentation), 
-        'max_note_shift={}'.format(max_note_shift), 
         'batch_size={}'.format(batch_size))
     create_folder(logs_dir)
 
     create_logging(logs_dir, filemode='w')
-    logging.info(args)
+    logging.info('Arguments:\n{}'.format(pprint.pformat(args.__dict__)))
 
     if 'cuda' in str(device):
         logging.info('Using GPU.')
@@ -208,25 +205,27 @@ def train(args):
     best_validate_statistics = None
     best_iteration = 0
     
-    logging.info('Training starting...')
-    logging.info('='*50)
+    print("="*46, " TRAINING ", "="*46)
     
     train_bgn_time = time.time()
+    
+    eval_metric = 'frame_ap' if model_type == 'Regress_onset_offset_frame_velocity_CRNN' else 'pedal_frame_mae'
 
     for batch_data_dict in train_loader:
         
         # Evaluation 
         if iteration % 50 == 0 and iteration > 0:
-            logging.info('-'*50)
-            logging.info('Validating at iteration {}'.format(iteration)) 
+            print('*'*45, " VALIDATING ", '*'*45)
 
             train_fin_time = time.time()
 
             evaluate_train_statistics = evaluator.evaluate(evaluate_train_loader)
             validate_statistics = evaluator.evaluate(validate_loader)
 
-            logging.info('Train statistics: {}'.format(evaluate_train_statistics))
-            logging.info('Validation statistics: {}'.format(validate_statistics))
+            logging.info('Train statistics:\n{}'.format(pprint.pformat(evaluate_train_statistics)))
+            print('-'*104)
+            logging.info('Validation statistics:\n{}'.format(pprint.pformat(validate_statistics)))
+            print('-'*104)
 
             statistics_container.append(iteration, evaluate_train_statistics, data_type='train')
             statistics_container.append(iteration, validate_statistics, data_type='validation')
@@ -236,34 +235,29 @@ def train(args):
             validate_time = time.time() - train_fin_time
 
             logging.info(
-                'Train time: {:.3f} s, validate time: {:.3f} s'
+                'Train time: {:.3f} s *** Validate time: {:.3f} s'
                 ''.format(train_time, validate_time))
             
-            # Save best model based on validation frame_ap
-            if best_validate_statistics is None or \
-                (model_type == 'Regress_onset_offset_frame_velocity_CRNN' and validate_statistics['frame_ap'] > best_validate_statistics['frame_ap']) or \
-                (model_type == 'Regress_pedal_CRNN' and validate_statistics['pedal_ap'] > best_validate_statistics['pedal_ap']):
+            checkpoint = {
+                'iteration': iteration, 
+                'model': model.module.state_dict(), 
+                'sampler': train_sampler.state_dict(),
+                'validate_statistics': validate_statistics,
+            }
+            
+            checkpoint_path = os.path.join(checkpoints_dir, 
+                '{}-{}-{:.3f}.pth'.format(iteration, eval_metric, validate_statistics[eval_metric]))
+            torch.save(checkpoint, checkpoint_path)
+            logging.info('Model saved to: {}'.format(checkpoint_path))
+            
+            # Save best model based on validation frame_ap or pedal_frame_mae
+            if best_validate_statistics is None or validate_statistics[eval_metric] > best_validate_statistics[eval_metric]:
+                logging.info('** Better model found at iteration {} **'.format(iteration))
                 
                 best_validate_statistics = validate_statistics
                 best_iteration = iteration
-                
-                # Save best model
-                checkpoint = {
-                    'iteration': iteration, 
-                    'model': model.module.state_dict(), 
-                    'sampler': train_sampler.state_dict(),
-                    'validate_statistics': validate_statistics,
-                }
-                
-                best_checkpoint_path = os.path.join(
-                    checkpoints_dir, '{}_iter_{}_valid_ap_{:.3f}.pth'.format(model_type, iteration, validate_statistics['frame_ap']))
-                    
-                torch.save(checkpoint, best_checkpoint_path)
-                logging.info('Best model saved to {} at iteration {}'.format(
-                    best_checkpoint_path, iteration))
-                logging.info('Best validation statistics: {}'.format(validate_statistics))
-                logging.info('-'*50)
 
+            print('*'*102)
             train_bgn_time = time.time()
         
         # Save model
@@ -309,11 +303,18 @@ def train(args):
         iteration += 1
     
     # After training, log final results
-    logging.info('='*50)
     logging.info('Training finished')
-    logging.info('-'*50)
+    print('='*104)
     logging.info('Best iteration: {}'.format(best_iteration))
-    logging.info('Best validation statistics: {}'.format(best_validate_statistics))
+    logging.info('Best validation statistics:\n{}'.format(pprint.pformat(best_validate_statistics)))
+    
+    best_model_path = os.path.join(workspace, "best",
+        'best-{}.pth'.format(model_type))
+    os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
+
+    torch.save(model.module.state_dict(), best_model_path)
+    logging.info('Best model saved to: {}'.format(best_model_path))
+    print('='*104)
 
 
 if __name__ == '__main__':
