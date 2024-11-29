@@ -145,6 +145,9 @@ def read_midi(midi_path):
     midi_file = MidiFile(midi_path)
     ticks_per_beat = midi_file.ticks_per_beat
 
+    print("TRACKS: ", midi_file.tracks)
+    print("-"*20)
+    print("LEN: ", len(midi_file.tracks))
     assert len(midi_file.tracks) == 2
     """The first track contains tempo, time signature. The second track 
     contains piano events."""

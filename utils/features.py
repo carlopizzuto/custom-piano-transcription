@@ -23,12 +23,13 @@ def pack_other_dataset_to_hdf5(args):
     # Arguments & parameters
     dataset_dir = args.dataset_dir
     workspace = args.workspace
-
+    csv_name = args.csv_name
     sample_rate = config.sample_rate
 
     # Paths
-    csv_path = os.path.join(dataset_dir, 'maestro-v2.0.0.csv')
-    waveform_hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maestro')
+    csv_path = os.path.join(dataset_dir, '{}.csv'.format(csv_name))
+    logging.info('CSV path: {}'.format(csv_path))
+    waveform_hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maps')
 
     logs_dir = os.path.join(workspace, 'logs', get_filename(__file__))
     create_logging(logs_dir, filemode='w')
@@ -38,16 +39,15 @@ def pack_other_dataset_to_hdf5(args):
     meta_dict = read_metadata(csv_path)
 
     audios_num = len(meta_dict['canonical_composer'])
-    logging.info('Total audios number: {}'.format(audios_num))
+    print('Total audios number: {}'.format(audios_num))
 
     feature_time = time.time()
 
     # Load & resample each audio file to an HDF5 file
     for n in range(audios_num):
-        logging.info('{} {}'.format(n, meta_dict['midi_filename'][n]))
-
         # Read MIDI
         midi_path = os.path.join(dataset_dir, meta_dict['midi_filename'][n])
+        print('MIDI path: {}'.format(midi_path))
         midi_dict = read_midi(midi_path)
 
         # Load audio
@@ -222,6 +222,7 @@ if __name__ == '__main__':
     parser_pack_other = subparsers.add_parser('pack_other_dataset_to_hdf5')
     parser_pack_other.add_argument('--dataset_dir', type=str, required=True, help='Directory of dataset.')
     parser_pack_other.add_argument('--workspace', type=str, required=True, help='Directory of your workspace.')
+    parser_pack_other.add_argument('--csv_name', type=str, required=True, help='Name of csv file (exclude .csv).')
 
     parser_pack_maps = subparsers.add_parser('pack_maps_dataset_to_hdf5')
     parser_pack_maps.add_argument('--dataset_dir', type=str, required=True, help='Directory of dataset.')

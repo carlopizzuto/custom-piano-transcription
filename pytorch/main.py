@@ -77,7 +77,7 @@ def train(args):
     loss_func = get_loss_func(loss_type)
 
     # Paths
-    hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maestro')
+    hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maps')
 
     checkpoints_dir = os.path.join(workspace, 'checkpoints', filename, 
         model_type,

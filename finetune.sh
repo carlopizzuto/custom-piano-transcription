@@ -6,6 +6,7 @@ export PYTHONPATH=$(pwd):$PYTHONPATH
 # Download checkpoint and inference
 CHECKPOINT_PATH="CRNN_note_F1=0.9677_pedal_F1=0.9186.pth"
 if [ ! -f "$CHECKPOINT_PATH" ]; then
+    echo "Downloading checkpoint..."
     wget -O "$CHECKPOINT_PATH" "https://zenodo.org/record/4034264/files/CRNN_note_F1=0.9677_pedal_F1=0.9186.pth?download=1"
 fi
 
@@ -14,6 +15,7 @@ NOTE_CHECKPOINT="onset_offset_frame_velocity_pretrained.pth"
 PEDAL_CHECKPOINT="pedal_pretrained.pth"
 
 # Split combined checkpoint into note and pedal checkpoints
+echo "Splitting combined checkpoint..."
 python3 pytorch/split_combined_checkpoint.py \
   --combined_checkpoint_path="$CHECKPOINT_PATH" \
   --note_checkpoint_path="$NOTE_CHECKPOINT" \
@@ -32,13 +34,18 @@ fi
 DATASET_DIR="/workspace/datasets/data"
 
 # Pack audio files to HDF5 format for training 
-# python3 utils/features.py pack_other_dataset_to_hdf5 \
-#   --dataset_dir="$DATASET_DIR" \
-#  --workspace="$WORKSPACE"
+echo "Packing audio files to HDF5 format..."
+python3 utils/features.py pack_other_dataset_to_hdf5 \
+  --dataset_dir="$DATASET_DIR" \
+  --workspace="$WORKSPACE" \
+  --csv_name="maestro-v2.0.0"
+
+exit 0
 
 # --- 1. Fine-Tune Note Transcription System ---
 BATCH_SIZE=4
 
+echo "Fine-tuning note transcription system..."
 python3 pytorch/main.py train \
   --workspace="$WORKSPACE" \
   --model_type='Regress_onset_offset_frame_velocity_CRNN' \
@@ -56,6 +63,7 @@ python3 pytorch/main.py train \
   --anomaly_detection
 
 # --- 2. Fine-Tune Pedal Transcription System ---
+echo "Fine-tuning pedal transcription system..."
 python3 pytorch/main.py train \
   --workspace="$WORKSPACE" \
   --model_type='Regress_pedal_CRNN' \
