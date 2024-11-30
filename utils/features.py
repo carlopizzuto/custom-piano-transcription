@@ -27,8 +27,8 @@ def pack_other_dataset_to_hdf5(args):
     sample_rate = config.sample_rate
 
     # Paths
-    csv_path = os.path.join(dataset_dir, 'maestro-v2.0.0.csv')
-    waveform_hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maestro')
+    csv_path = os.path.join(dataset_dir, 'maps.csv')
+    waveform_hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maps')
 
     logs_dir = os.path.join(workspace, 'logs', get_filename(__file__))
     create_logging(logs_dir, filemode='w')
@@ -47,11 +47,11 @@ def pack_other_dataset_to_hdf5(args):
         logging.info('{} {}'.format(n, meta_dict['midi_filename'][n]))
 
         # Read MIDI
-        midi_path = os.path.join(dataset_dir, meta_dict['midi_filename'][n])
+        midi_path = os.path.join(dataset_dir, meta_dict['year'][n], meta_dict['midi_filename'][n])
         midi_dict = read_midi(midi_path)
 
         # Load audio
-        audio_path = os.path.join(dataset_dir, meta_dict['audio_filename'][n])
+        audio_path = os.path.join(dataset_dir, meta_dict['year'][n], meta_dict['audio_filename'][n])
         (audio, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
 
         # **Normalize audio to [-1.0, 1.0]**
