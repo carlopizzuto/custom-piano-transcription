@@ -151,7 +151,7 @@ def train(args):
         batch_size=batch_size, mini_data=mini_data)
 
     evaluate_validate_sampler = TestSampler(hdf5s_dir=hdf5s_dir, 
-        split='validation', segment_seconds=segment_seconds, hop_seconds=hop_seconds, 
+        split='test', segment_seconds=segment_seconds, hop_seconds=hop_seconds, 
         batch_size=batch_size, mini_data=mini_data)
 
     # Dataloader
