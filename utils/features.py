@@ -61,6 +61,7 @@ def pack_other_dataset_to_hdf5(args):
 
         packed_hdf5_path = os.path.join(
             waveform_hdf5s_dir,
+            meta_dict['year'][n],
             '{}.h5'.format(os.path.splitext(meta_dict['audio_filename'][n])[0])
         )
 
