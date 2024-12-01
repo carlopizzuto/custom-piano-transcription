@@ -3,6 +3,10 @@
 # ============ Fine-Tune Piano Transcription System ============
 export PYTHONPATH=$(pwd):$PYTHONPATH
 
+# Workspace directory where intermediate results will be saved
+WORKSPACE="/workspace/aug-finetune"
+DATASET_DIR="/workspace/datasets/aug"
+
 # Download checkpoint and inference
 CHECKPOINT_PATH="CRNN_note_F1=0.9677_pedal_F1=0.9186.pth"
 if [ ! -f "$CHECKPOINT_PATH" ]; then
@@ -19,17 +23,11 @@ python3 pytorch/split_combined_checkpoint.py \
   --note_checkpoint_path="$NOTE_CHECKPOINT" \
   --pedal_checkpoint_path="$PEDAL_CHECKPOINT"
 
-# Workspace directory where intermediate results will be saved
-WORKSPACE="/workspace/aug-finetune"
-
 # Create workspace directory if it doesn't exist
 if [ ! -d "$WORKSPACE" ]; then
     mkdir -p "$WORKSPACE"
     echo "Created workspace directory: $WORKSPACE"
 fi
-
-# Non-classical dataset directory (ensure this dataset is prepared beforehand)
-DATASET_DIR="/workspace/datasets/aug"
 
 # Pack audio files to HDF5 format for training 
 # python3 utils/features.py pack_other_dataset_to_hdf5 \
@@ -46,13 +44,12 @@ python3 pytorch/main.py train \
   --augmentation='none' \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
-  --learning_rate=5e-5 \
+  --learning_rate=1e-6 \
   --reduce_iteration=100 \
   --resume_iteration=0 \
   --early_stop=200 \
   --cuda \
   --checkpoint_path="$NOTE_CHECKPOINT" \
-  --mini_data \
   --anomaly_detection
 
 # --- 2. Fine-Tune Pedal Transcription System ---
@@ -63,13 +60,12 @@ python3 pytorch/main.py train \
   --augmentation='none' \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
-  --learning_rate=5e-6 \
+  --learning_rate=1e-6 \
   --reduce_iteration=100 \
   --resume_iteration=0 \
   --early_stop=200 \
   --cuda \
   --checkpoint_path="$PEDAL_CHECKPOINT" \
-  --mini_data \
   --anomaly_detection
 
 exit 0
