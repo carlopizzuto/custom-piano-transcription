@@ -77,7 +77,7 @@ def train(args):
     loss_func = get_loss_func(loss_type)
 
     # Paths
-    hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maestro')
+    hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maps')
 
     checkpoints_dir = os.path.join(workspace, 'checkpoints', filename, 
         model_type,
@@ -151,7 +151,7 @@ def train(args):
         batch_size=batch_size, mini_data=mini_data)
 
     evaluate_validate_sampler = TestSampler(hdf5s_dir=hdf5s_dir, 
-        split='test', segment_seconds=segment_seconds, hop_seconds=hop_seconds, 
+        split='validation', segment_seconds=segment_seconds, hop_seconds=hop_seconds, 
         batch_size=batch_size, mini_data=mini_data)
 
     # Dataloader
@@ -212,7 +212,6 @@ def train(args):
     eval_metric = 'frame_ap' if model_type == 'Regress_onset_offset_frame_velocity_CRNN' else 'pedal_frame_mae'
 
     for batch_data_dict in train_loader:
-        
         # Evaluation 
         if iteration % 50 == 0 and iteration > 0:
             print('*'*45, " VALIDATING ", '*'*45)
@@ -294,6 +293,13 @@ def train(args):
 
         # Backward
         loss.backward()
+        
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+        # Check for NaN gradients
+        for name, param in model.named_parameters():
+            if param.grad is not None and torch.isnan(param.grad).any():
+                raise ValueError(f"NaN detected in gradients for {name} at iteration {iteration}")
         
         optimizer.step()
         optimizer.zero_grad()
