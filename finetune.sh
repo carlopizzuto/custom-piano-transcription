@@ -4,8 +4,8 @@
 export PYTHONPATH=$(pwd):$PYTHONPATH
 
 # Workspace directory where intermediate results will be saved
-WORKSPACE="/workspace/aug-finetune"
-DATASET_DIR="/workspace/datasets/aug"
+WORKSPACE="/workspace/maps-finetune"
+DATASET_DIR="/workspace/datasets/maps"
 
 # Download checkpoint and inference
 CHECKPOINT_PATH="CRNN_note_F1=0.9677_pedal_F1=0.9186.pth"
@@ -30,9 +30,9 @@ if [ ! -d "$WORKSPACE" ]; then
 fi
 
 # Pack audio files to HDF5 format for training 
-# python3 utils/features.py pack_other_dataset_to_hdf5 \
-#   --dataset_dir="$DATASET_DIR" \
-#   --workspace="$WORKSPACE"
+python3 utils/features.py pack_other_dataset_to_hdf5 \
+  --dataset_dir="$DATASET_DIR" \
+  --workspace="$WORKSPACE"
 
 # --- 1. Fine-Tune Note Transcription System ---
 BATCH_SIZE=4
