@@ -4,8 +4,8 @@
 export PYTHONPATH=$(pwd):$PYTHONPATH
 
 # Workspace directory where intermediate results will be saved
-WORKSPACE="/workspace/maps-finetune"
-DATASET_DIR="/workspace/datasets/maps"
+WORKSPACE="/workspace/aug-finetune"
+DATASET_DIR="/workspace/datasets/aug"
 
 # Download checkpoint and inference
 CHECKPOINT_PATH="CRNN_note_F1=0.9677_pedal_F1=0.9186.pth"
@@ -18,10 +18,10 @@ NOTE_CHECKPOINT="onset_offset_frame_velocity_pretrained.pth"
 PEDAL_CHECKPOINT="pedal_pretrained.pth"
 
 # Split combined checkpoint into note and pedal checkpoints
-python3 pytorch/split_combined_checkpoint.py \
-  --combined_checkpoint_path="$CHECKPOINT_PATH" \
-  --note_checkpoint_path="$NOTE_CHECKPOINT" \
-  --pedal_checkpoint_path="$PEDAL_CHECKPOINT"
+# python3 pytorch/split_combined_checkpoint.py \
+#   --combined_checkpoint_path="$CHECKPOINT_PATH" \
+#   --note_checkpoint_path="$NOTE_CHECKPOINT" \
+#   --pedal_checkpoint_path="$PEDAL_CHECKPOINT"
 
 # Create workspace directory if it doesn't exist
 if [ ! -d "$WORKSPACE" ]; then
@@ -30,12 +30,15 @@ if [ ! -d "$WORKSPACE" ]; then
 fi
 
 # Pack audio files to HDF5 format for training 
-python3 utils/features.py pack_other_dataset_to_hdf5 \
-  --dataset_dir="$DATASET_DIR" \
-  --workspace="$WORKSPACE"
+# python3 utils/features.py pack_other_dataset_to_hdf5 \
+#   --dataset_dir="$DATASET_DIR" \
+#   --workspace="$WORKSPACE"
+
+CHECKPOINT_PATH_NOTE_FT="/workspace/aug-finetune/best/batch_size=6/best-Regress_onset_offset_frame_velocity_CRNN.pth"
+CHECKPOINT_PATH_PEDAL_FT="Regress_pedal_CRNN_onset_F1=0.9186.pth"
 
 # --- 1. Fine-Tune Note Transcription System ---
-BATCH_SIZE=4
+BATCH_SIZE=6
 
 python3 pytorch/main.py train \
   --workspace="$WORKSPACE" \
@@ -44,13 +47,14 @@ python3 pytorch/main.py train \
   --augmentation='none' \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
-  --learning_rate=1e-6 \
-  --reduce_iteration=100 \
+  --learning_rate=5e-5 \
+  --reduce_iteration=1000 \
   --resume_iteration=0 \
-  --early_stop=200 \
+  --early_stop=2000 \
   --cuda \
-  --checkpoint_path="$NOTE_CHECKPOINT" \
-  --anomaly_detection
+  --checkpoint_path="$CHECKPOINT_PATH_NOTE_FT" 
+
+exit 0
 
 # --- 2. Fine-Tune Pedal Transcription System ---
 python3 pytorch/main.py train \
@@ -60,13 +64,12 @@ python3 pytorch/main.py train \
   --augmentation='none' \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
-  --learning_rate=1e-6 \
-  --reduce_iteration=100 \
+  --learning_rate=5e-5 \
+  --reduce_iteration=2000 \
   --resume_iteration=0 \
-  --early_stop=200 \
+  --early_stop=6000 \
   --cuda \
-  --checkpoint_path="$PEDAL_CHECKPOINT" \
-  --anomaly_detection
+  --checkpoint_path="$PEDAL_CHECKPOINT" 
 
 exit 0
 
