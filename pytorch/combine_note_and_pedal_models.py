@@ -20,8 +20,8 @@ def combine_note_and_pedal_models(args):
     # Combine to new model
     full_checkpoint = {
         'model': {
-            'note_model': note_checkpoint['model'], 
-            'pedal_model': pedal_checkpoint['model']}}
+            'note_model': note_checkpoint, 
+            'pedal_model': pedal_checkpoint}}
 
     os.makedirs(os.path.dirname(output_checkpoint_path), exist_ok=True)
     torch.save(full_checkpoint, output_checkpoint_path)
