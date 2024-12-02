@@ -213,7 +213,7 @@ def train(args):
 
     for batch_data_dict in train_loader:
         # Evaluation 
-        if iteration % 400 == 0 and iteration > 0:
+        if iteration % 200 == 0 and iteration > 0:
             print('*'*45, " VALIDATING ", '*'*45)
 
             train_fin_time = time.time()

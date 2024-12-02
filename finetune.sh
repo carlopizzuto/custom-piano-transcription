@@ -18,10 +18,10 @@ NOTE_CHECKPOINT="onset_offset_frame_velocity_pretrained.pth"
 PEDAL_CHECKPOINT="pedal_pretrained.pth"
 
 # Split combined checkpoint into note and pedal checkpoints
-# python3 pytorch/split_combined_checkpoint.py \
-#   --combined_checkpoint_path="$CHECKPOINT_PATH" \
-#   --note_checkpoint_path="$NOTE_CHECKPOINT" \
-#   --pedal_checkpoint_path="$PEDAL_CHECKPOINT"
+python3 pytorch/split_combined_checkpoint.py \
+  --combined_checkpoint_path="$CHECKPOINT_PATH" \
+  --note_checkpoint_path="$NOTE_CHECKPOINT" \
+  --pedal_checkpoint_path="$PEDAL_CHECKPOINT"
 
 # Create workspace directory if it doesn't exist
 if [ ! -d "$WORKSPACE" ]; then
@@ -34,11 +34,8 @@ fi
 #   --dataset_dir="$DATASET_DIR" \
 #   --workspace="$WORKSPACE"
 
-CHECKPOINT_PATH_NOTE_FT="/workspace/aug-finetune/best/batch_size=6/best-Regress_onset_offset_frame_velocity_CRNN.pth"
-CHECKPOINT_PATH_PEDAL_FT="Regress_pedal_CRNN_onset_F1=0.9186.pth"
-
 # --- 1. Fine-Tune Note Transcription System ---
-BATCH_SIZE=6
+BATCH_SIZE=4
 
 python3 pytorch/main.py train \
   --workspace="$WORKSPACE" \
@@ -47,12 +44,12 @@ python3 pytorch/main.py train \
   --augmentation='none' \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
-  --learning_rate=5e-5 \
-  --reduce_iteration=1000 \
+  --learning_rate=1e-6 \
+  --reduce_iteration=250 \
   --resume_iteration=0 \
-  --early_stop=2000 \
+  --early_stop=1000 \
   --cuda \
-  --checkpoint_path="$CHECKPOINT_PATH_NOTE_FT" 
+  --checkpoint_path="$NOTE_CHECKPOINT" 
 
 exit 0
 
@@ -64,10 +61,10 @@ python3 pytorch/main.py train \
   --augmentation='none' \
   --max_note_shift=0 \
   --batch_size=$BATCH_SIZE \
-  --learning_rate=5e-5 \
-  --reduce_iteration=2000 \
+  --learning_rate=1e-6 \
+  --reduce_iteration=250 \
   --resume_iteration=0 \
-  --early_stop=6000 \
+  --early_stop=1000 \
   --cuda \
   --checkpoint_path="$PEDAL_CHECKPOINT" 
 
