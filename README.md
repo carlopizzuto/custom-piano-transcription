@@ -15,6 +15,7 @@ Before running ft.sh, please run:
 - source venv/bin/activate
 - python3 -m pip install --upgrade pip
 - pip install -r requirements.txt
+- source /workspace/venv/bin/activate
 
 <a href="https://replicate.com/replicate/piano-transcription"><img src="https://replicate.com/replicate/piano-transcription/badge"></a>
 
