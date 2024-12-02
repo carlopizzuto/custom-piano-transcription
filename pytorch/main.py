@@ -213,7 +213,7 @@ def train(args):
 
     for batch_data_dict in train_loader:
         # Evaluation 
-        if iteration % 50 == 0 and iteration > 0:
+        if iteration % 400 == 0 and iteration > 0:
             print('*'*45, " VALIDATING ", '*'*45)
 
             train_fin_time = time.time()
@@ -251,8 +251,8 @@ def train(args):
             
             # Save best model based on validation frame_ap or pedal_frame_mae
             if best_validate_statistics is None or \
-                (model_type == 'Regress_onset_offset_frame_velocity_CRNN' and validate_statistics[eval_metric] > best_validate_statistics[eval_metric]) or \
-                (model_type == 'Regress_pedal_CRNN' and validate_statistics[eval_metric] < best_validate_statistics[eval_metric]):
+                (eval_metric == 'frame_ap' and validate_statistics[eval_metric] > best_validate_statistics[eval_metric]) or \
+                (eval_metric == 'pedal_frame_mae' and validate_statistics[eval_metric] < best_validate_statistics[eval_metric]):
                 logging.info('** Better model found at iteration {} **'.format(iteration))
                 
                 best_validate_statistics = validate_statistics
